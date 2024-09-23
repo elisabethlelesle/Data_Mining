@@ -60,6 +60,7 @@ p <- ggplot(mds_df, aes(x = MDS1, y = MDS2)) +
   theme_minimal()
 
 # Display the ggplot
+<<<<<<< HEAD
 print(p)
 
 
@@ -118,3 +119,8 @@ unique_isolation_forest <- setdiff(isolation_forest_outliers, mahalanobis_outlie
 
 cat("Unique Mahalanobis Outliers Indices:", unique_mahalanobis, "\n")
 cat("Unique Isolation Forest Outliers Indices:", unique_isolation_forest, "\n")
+
+
+## Question 4
+
+library(arules)

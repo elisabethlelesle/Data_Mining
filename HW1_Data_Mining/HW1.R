@@ -1,5 +1,6 @@
 ## Question 1
 
+
 # Load necessary libraries
 library(ggplot2)
 library(dplyr)
@@ -60,3 +61,60 @@ p <- ggplot(mds_df, aes(x = MDS1, y = MDS2)) +
 
 # Display the ggplot
 print(p)
+
+
+## Question 2
+install.packages("isotree")
+library(isotree)
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+library(isolationForest)
+
+# Load the dataset
+pima <- read.csv("Pima.csv", stringsAsFactors = TRUE)
+
+# Visualize the dataset
+plot(pima)
+
+### Outlier Test Based on Mahalanobis Distance
+
+# Calculate means and covariance for the dataset
+mean_vector <- colMeans(pima[, -ncol(pima)])  # Exclude the last column if it's a factor (Outcome)
+cov_matrix <- cov(pima[, -ncol(pima)], use = "pairwise")
+
+# Calculate Mahalanobis distance
+pima$mdis <- mahalanobis(pima[, -ncol(pima)], mean_vector, cov_matrix)
+
+# Determine outliers using Chi-square test for 10% threshold
+threshold <- qchisq(df = ncol(pima) - 1, p = 0.9)  # df: degrees of freedom
+pima$outlier_mahalanobis <- pima$mdis > threshold
+
+# Summary of Mahalanobis outliers
+mahalanobis_outliers <- which(pima$outlier_mahalanobis)
+cat("Mahalanobis Outliers Indices:", mahalanobis_outliers, "\n")
+
+### Isolation Forest Method for Outlier Detection
+
+# Fit an isolation forest model
+iso_forest <- isolationForest(pima[, -ncol(pima)], ntrees = 100)
+
+# Predict outliers
+pima$isolation_forest_outlier <- predict(iso_forest, pima[, -ncol(pima)]) == -1
+
+# Summary of Isolation Forest outliers
+isolation_forest_outliers <- which(pima$isolation_forest_outlier)
+cat("Isolation Forest Outliers Indices:", isolation_forest_outliers, "\n")
+
+### Comparing Results
+
+# Common outliers
+common_outliers <- intersect(mahalanobis_outliers, isolation_forest_outliers)
+cat("Common Outliers Indices:", common_outliers, "\n")
+
+# Differences
+unique_mahalanobis <- setdiff(mahalanobis_outliers, isolation_forest_outliers)
+unique_isolation_forest <- setdiff(isolation_forest_outliers, mahalanobis_outliers)
+
+cat("Unique Mahalanobis Outliers Indices:", unique_mahalanobis, "\n")
+cat("Unique Isolation Forest Outliers Indices:", unique_isolation_forest, "\n")

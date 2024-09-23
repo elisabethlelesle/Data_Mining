@@ -65,46 +65,38 @@ print(p)
 
 
 ## Question 2
-install.packages("isotree")
+##install.packages("isotree")
 library(isotree)
-# Load necessary libraries
-library(dplyr)
-library(ggplot2)
-library(isolationForest)
 
 # Load the dataset
 pima <- read.csv("Pima.csv", stringsAsFactors = TRUE)
+plot(pima) # Visualization
 
-# Visualize the dataset
-plot(pima)
-
-### Outlier Test Based on Mahalanobis Distance
-
-# Calculate means and covariance for the dataset
+### Outlier test based on Mahalanobis distance
 mean_vector <- colMeans(pima[, -ncol(pima)])  # Exclude the last column if it's a factor (Outcome)
-cov_matrix <- cov(pima[, -ncol(pima)], use = "pairwise")
+mean_vector
 
-# Calculate Mahalanobis distance
+cov_matrix <- cov(pima[, -ncol(pima)], use = "pairwise")
+cov_matrix
+
 pima$mdis <- mahalanobis(pima[, -ncol(pima)], mean_vector, cov_matrix)
 
-# Determine outliers using Chi-square test for 10% threshold
+# Chi-square test for 10% threshold
 threshold <- qchisq(df = ncol(pima) - 1, p = 0.9)  # df: degrees of freedom
-pima$outlier_mahalanobis <- pima$mdis > threshold
+pima$maout <- (pima$mdis > threshold)
 
-# Summary of Mahalanobis outliers
-mahalanobis_outliers <- which(pima$outlier_mahalanobis)
+# Identify indices of Mahalanobis outliers
+mahalanobis_outliers <- which(pima$maout == TRUE)
 cat("Mahalanobis Outliers Indices:", mahalanobis_outliers, "\n")
 
-### Isolation Forest Method for Outlier Detection
+### Outlier test based on Isolation Forest
+iso_model <- isolation.forest(pima[, -ncol(pima)], ntrees = 100, nthreads = -1)
+predictions <- predict(iso_model, pima[, -ncol(pima)])
 
-# Fit an isolation forest model
-iso_forest <- isolationForest(pima[, -ncol(pima)], ntrees = 100)
+# Identify data with highest outlier score
+pima[which.max(predictions),]  # Data with the highest outlier score
+isolation_forest_outliers <- which(predictions > 0.6)
 
-# Predict outliers
-pima$isolation_forest_outlier <- predict(iso_forest, pima[, -ncol(pima)]) == -1
-
-# Summary of Isolation Forest outliers
-isolation_forest_outliers <- which(pima$isolation_forest_outlier)
 cat("Isolation Forest Outliers Indices:", isolation_forest_outliers, "\n")
 
 ### Comparing Results
@@ -119,6 +111,7 @@ unique_isolation_forest <- setdiff(isolation_forest_outliers, mahalanobis_outlie
 
 cat("Unique Mahalanobis Outliers Indices:", unique_mahalanobis, "\n")
 cat("Unique Isolation Forest Outliers Indices:", unique_isolation_forest, "\n")
+
 
 
 ## Question 4

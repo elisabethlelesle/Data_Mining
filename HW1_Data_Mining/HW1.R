@@ -43,3 +43,6 @@ ggplot(mds_df, aes(x=MDS1, y=MDS2, color=Gender, shape=Gender)) +
        y="MDS Dimension 2") +
   theme_minimal() +
   scale_color_manual(values=c("blue", "red"))  # Change colors as needed
+
+
+

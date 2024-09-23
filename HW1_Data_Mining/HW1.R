@@ -9,21 +9,25 @@ library(MASS)
 # Load the dataset
 data <- read.csv("gender_outlier.csv")
 
+# Check structure of the data
+str(data$Height)
+
+
 # Display histograms for height, weight, and waist
 par(mfrow=c(1,3))  # Set up the plotting area
-hist(data$height, main="Height Histogram", xlab="Height (cm)", col="lightblue", border="black")
-hist(data$weight, main="Weight Histogram", xlab="Weight (kg)", col="lightgreen", border="black")
-hist(data$waist, main="Waist Histogram", xlab="Waist (cm)", col="lightcoral", border="black")
+hist(data$Height, main="Height Histogram", xlab="Height (cm)", col="lightblue", border="black")
+hist(data$Weight, main="Weight Histogram", xlab="Weight (kg)", col="lightgreen", border="black")
+hist(data$Waist, main="Waist Histogram", xlab="Waist (cm)", col="lightcoral", border="black")
 
 # Box plots to identify outliers
 par(mfrow=c(1,3))  # Set up the plotting area
-boxplot(data$height, main="Height Box Plot", horizontal=TRUE, col="lightblue")
-boxplot(data$weight, main="Weight Box Plot", horizontal=TRUE, col="lightgreen")
-boxplot(data$waist, main="Waist Box Plot", horizontal=TRUE, col="lightcoral")
+boxplot(data$Height, main="Height Box Plot", horizontal=TRUE, col="lightblue")
+boxplot(data$Weight, main="Weight Box Plot", horizontal=TRUE, col="lightgreen")
+boxplot(data$Waist, main="Waist Box Plot", horizontal=TRUE, col="lightcoral")
 
 # Multi-dimensional scaling
 # Prepare the data for MDS
-mds_data <- data %>% select(height, weight, waist)
+mds_data <- data %>% select(data$Height, data$Weight, data$Waist)
 mds_result <- isoMDS(dist(mds_data))
 
 # Create a data frame for MDS results

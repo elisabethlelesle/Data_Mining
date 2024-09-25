@@ -303,7 +303,7 @@ rule1 <- apriori(as.data.frame(bank_data),
                  parameter = list(minlen = 2, supp = 0.1, conf = 0.1),
                  appearance = list(rhs = "y=yes", default = "lhs"))
 
-# Sort by confidence
+# Sort by count
 sorted1 <- sort(rule1, by = "count")
 cat("Rules with y=yes (sorted by count):\n")
 inspect(head(sorted1))
@@ -313,7 +313,7 @@ rule2 <- apriori(as.data.frame(bank_data),
                  parameter = list(minlen = 2, supp = 0.5, conf = 0.8, maxlen = 5),
                  appearance = list(rhs = "y=no", default = "lhs"))
 
-# Sort by confidence
+# Sort by count
 sorted2 <- sort(rule2, by = "count")
 cat("Rules with y=no (sorted by count):\n")
 inspect(head(sorted2))

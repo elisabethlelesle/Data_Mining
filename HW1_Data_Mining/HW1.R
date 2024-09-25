@@ -300,7 +300,7 @@ inspect(head(sorted0))
 
 # Rule 1: Rules with y=yes as RHS
 rule1 <- apriori(as.data.frame(bank_data), 
-                 parameter = list(minlen = 2, supp = 0.5, conf = 0.8, maxlen = 5),
+                 parameter = list(minlen = 2, supp = 0.1, conf = 0.1),
                  appearance = list(rhs = "y=yes", default = "lhs"))
 
 # Sort by confidence

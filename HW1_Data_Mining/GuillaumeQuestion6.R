@@ -22,6 +22,6 @@ p_values <- summary(model)$coefficients[,4]
 
 print(r_squared)
 print(adj_r_squared)
-print(head(sort(p_values)))
+print(tail(sort(p_values)))
 
 

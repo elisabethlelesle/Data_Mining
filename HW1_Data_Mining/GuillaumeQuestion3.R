@@ -9,12 +9,14 @@ library(MASS)
 library(readxl)
 library(forecast)
 
-
+#read the data
 data <- read_excel("Asia_Stock.xlsx")
 
 data_Japan <- data$JAPAN
 data_India <- data$INDIA
 
+#calculate the moving average
+#slide 1 ensures that we use the current and previous values and not future values
 sma_10 <- stats::filter(data_Japan, rep(1/10, 10), sides=1)
 sma_20 <- stats::filter(data_Japan, rep(1/20, 20), sides=1)
 
@@ -53,12 +55,17 @@ print(performance_sma_20)
 lambda1 <- 0.25
 lambda2 <- 0.45
 
+#Holtwinters with beat and gamma set to FALSE helps us do exponential smoothing 
 exp_smooth_025 <- HoltWinters(data_India, alpha = lambda1, beta = FALSE, gamma = FALSE)
 exp_smooth_045 <- HoltWinters(data_India, alpha = lambda2, beta = FALSE, gamma = FALSE)
 
-fitted_025 <- c(NA, exp_smooth_025$fitted[,1])
-fitted_045 <- c(NA, exp_smooth_045$fitted[,1])
+#add one value at the beginning since expontial smoothing turn a array of size n in
+# an array of size n-1 because we want to compare it with the original data that has
+# 1 more value
+fitted_025 <- c(exp_smooth_025[1,1], exp_smooth_025$fitted[,1])
+fitted_045 <- c(exp_smooth_045[1,1], exp_smooth_045$fitted[,1])
 
+#plotting everything
 plot_df_ES <- data.frame(Date = 1:length(data_India), India = data_India,ES25 = fitted_025, ES45 = fitted_045)
 
 ggplot(plot_df_ES, aes(x = Date)) +
@@ -68,6 +75,7 @@ ggplot(plot_df_ES, aes(x = Date)) +
   theme_minimal() +
   scale_color_manual(values = c("ES 25" = "blue", "ES 45" = "orange"))
 
+#printing the performance
 performace_SE_25 <- calc_performance(data_India, fitted_025)
 print(performace_SE_25)
 

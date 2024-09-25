@@ -1,4 +1,4 @@
-## Question 5
+# Question 5 ----
 
 # Load necessary libraries
 library(ggplot2)
@@ -49,10 +49,14 @@ rules_no <- apriori(transactions,
                     parameter = list(supp = 0.1, conf = 0.5, minlen = 2),
                     appearance = list(rhs = c("Outcome=No"), default = "lhs"))
 
+# Sort the rules for 'Outcome=Yes' by support
+sorted_rules_yes <- sort(rules_yes, by = "count", decreasing = TRUE)
 
+# Sort the rules for 'Outcome=No' by support
+sorted_rules_no <- sort(rules_no, by = "count", decreasing = TRUE)
 
 # Get LHS item frequencies for 'Outcome=Yes'
-inspect(head(rules_yes))
-inspect(head(rules_no))
+inspect(head(sorted_rules_yes))
+inspect(head(sorted_rules_no))
 
 

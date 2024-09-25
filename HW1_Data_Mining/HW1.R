@@ -13,8 +13,7 @@ data <- read.csv("gender_outlier.csv")
 plot(data)
 
 # Check structure of the data
-str(data$Height)
-
+#str(data$Height)
 
 # Display histograms w.r.t. height, weight, and waist
 par(mfrow=c(1,3))  # Set up the plotting area
@@ -30,42 +29,30 @@ boxplot(data$Waist, main="Waist Box Plot", horizontal=FALSE, col="lightcoral")
 
 # Multi-dimensional scaling
 # Prepare the data for MDS
-print(colnames(data))
+#print(colnames(data))
 mds_data <- data[c("Height", "Weight", "Waist")]
-
 # Calculate the distance matrix using Euclidean distance
 dist_matrix <- dist(mds_data, method = 'euclidean')
-
 # Perform MDS
 mds_result <- cmdscale(dist_matrix, k = 2, eig = TRUE)
-
 # Extract MDS coordinates
 mdsx <- mds_result$points[, 1]
 mdsy <- mds_result$points[, 2]
-
 # Create a data frame for ggplot
 mds_df <- data.frame(MDS1 = mdsx, MDS2 = mdsy, Gender = factor(data$Gender))
-
-# Base R plot for MDS
-plot(mdsx, mdsy, pch = as.numeric(mds_df$Gender), 
-     col = as.numeric(mds_df$Gender) + 1, 
-     main = "MDS for Gender Data", 
-     xlab = "MDS Dimension 1", 
-     ylab = "MDS Dimension 2")
-
 # ggplot for MDS
 p <- ggplot(mds_df, aes(x = MDS1, y = MDS2)) +
   geom_point(size = 3, aes(colour = Gender, shape = Gender)) +
   labs(title = "MDS for Gender Data", x = "MDS Dimension 1", y = "MDS Dimension 2") +
   theme_minimal()
-
 # Display the ggplot
-<<<<<<< HEAD
 print(p)
 
 
 ## Question 2
-##install.packages("isotree")
+
+
+#install.packages("isotree")
 library(isotree)
 
 # Load the dataset
@@ -88,6 +75,7 @@ pima$maout <- (pima$mdis > threshold)
 # Identify indices of Mahalanobis outliers
 mahalanobis_outliers <- which(pima$maout == TRUE)
 cat("Mahalanobis Outliers Indices:", mahalanobis_outliers, "\n")
+
 
 ### Outlier test based on Isolation Forest
 iso_model <- isolation.forest(pima[, -ncol(pima)], ntrees = 100, nthreads = -1)
@@ -122,9 +110,12 @@ library(arulesViz)
 # Load the dataset
 bank_data <- read.csv("bank.csv", stringsAsFactors = TRUE)
 
-# Step 1: Split the single column into multiple columns
+### Preparing the data 
+
 # Rename the single column to a temporary name
 colnames(bank_data) <- "data"
+
+# Split the single column into multiple columns
 bank_data <- bank_data %>%
   separate(data, into = c("age", "job", "marital", "education", "default", 
                           "balance", "housing", "loan", "contact", 
@@ -132,11 +123,11 @@ bank_data <- bank_data %>%
                           "pdays", "previous", "poutcome", "y"), 
            sep = ";")
 
-# Step 2: Remove specified columns
+# Remove specified columns
 bank_data <- bank_data %>%
-  select(-job, -contact, -pdays, -poutcome, -month, -day)
+  dplyr::select(-job, -contact, -pdays, -poutcome, -month, -day)
 
-# Step 3: Discretize the age column
+### Discretize the age column
 bank_data$age <- as.numeric(as.character(bank_data$age))  # Convert age to numeric
 bank_data$age <- case_when(
   bank_data$age < 35 ~ "young",
@@ -144,7 +135,8 @@ bank_data$age <- case_when(
   bank_data$age > 55 ~ "old"
 )
 
-# Step 4: Convert remaining numeric columns to factors based on median
+### Convert remaining numeric columns to factors based on median
+
 # Identify numeric columns
 check_numeric_cols <-sapply(bank_data, function(x) {
   # Try converting and check if there are any NAs
@@ -156,13 +148,14 @@ bank_data[numeric_cols] <- lapply(bank_data[numeric_cols], function(x) {
   factor(ifelse(x < median(x, na.rm = TRUE), "low", "high"))
 })
 
-# Step 5: Analyze remaining categorical columns with the frequency distribution
+### Analyze remaining categorical columns with the frequency distribution
+
 # Create a new dataframe with only categorical columns
 categorical_cols <- setdiff(names(bank_data), numeric_cols)
+
 # Iterate over all categorical columns and create frequency tables
 for (col_name in categorical_cols) {
   category_table <- table(bank_data[[col_name]])
-  
   # Print the category table for each categorical column
   cat("\nFrequency table for", col_name, ":\n")
   print(category_table)
@@ -182,46 +175,37 @@ education_median <- median(bank_data$education_numeric, na.rm = TRUE)
 bank_data$education <- ifelse(bank_data$education_numeric > education_median, "high", "low")
 
 
-# For the default column
-# Assign numeric values for the default column
+# For the default column (same steps as education column)
 bank_data$default_numeric <- ifelse(bank_data$default == "no", 0,
                                     ifelse(bank_data$default == "yes", 1, NA))
 
-# Compute the median of the numeric values (excluding NAs)
 default_median <- median(bank_data$default_numeric, na.rm = TRUE)
 
-# Classify as "high" or "low" based on the median
 bank_data$default <- ifelse(bank_data$default_numeric > default_median, "high", "low")
 
-# For the housing
-# Assign numeric values for the housing column
+# For the housing (same steps as education column)
 bank_data$housing_numeric <- ifelse(bank_data$housing == "no", 0,
                                     ifelse(bank_data$housing == "yes", 1, NA))
 
-# Compute the median of the numeric values (excluding NAs)
 housing_median <- median(bank_data$housing_numeric, na.rm = TRUE)
 
-# Classify as "high" or "low" based on the median
 bank_data$housing <- ifelse(bank_data$housing_numeric > housing_median, "high", "low")
 
 
-#For the loan
-# Assign numeric values for the loan column
+#For the loan (same steps as education column)
 bank_data$loan_numeric <- ifelse(bank_data$loan == "no", 0,
                                  ifelse(bank_data$loan == "yes", 1, NA))
 
-# Compute the median of the numeric values (excluding NAs)
 loan_median <- median(bank_data$loan_numeric, na.rm = TRUE)
 
-# Classify as "high" or "low" based on the median
 bank_data$loan <- ifelse(bank_data$loan_numeric > loan_median, "high", "low")
 
 
-# Step 1: Prepare the data
-# Convert all columns to factors
+### Prepare the "high"/"low" formatted data: Convert all columns to factors
 bank_data[] <- lapply(bank_data, as.factor)
 
-# Step 2: Generate rules with y as the RHS
+### Generate rules with y as the RHS
+
 # Adjust parameters to reduce the number of rules
 rule0 <- apriori(as.data.frame(bank_data), 
                  parameter = list(minlen = 2, supp = 0.5, conf = 0.8, maxlen = 5),

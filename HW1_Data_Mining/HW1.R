@@ -24,9 +24,9 @@ hist(data$Waist, main="Waist Histogram", xlab="Waist (cm)", col="lightcoral", bo
 
 # Box plots to identify outliers
 par(mfrow=c(1,3))  # Set up the plotting area
-boxplot(data$Height, main="Height Box Plot", horizontal=TRUE, col="lightblue")
-boxplot(data$Weight, main="Weight Box Plot", horizontal=TRUE, col="lightgreen")
-boxplot(data$Waist, main="Waist Box Plot", horizontal=TRUE, col="lightcoral")
+boxplot(data$Height, main="Height Box Plot", horizontal=FALSE, col="lightblue")
+boxplot(data$Weight, main="Weight Box Plot", horizontal=FALSE, col="lightgreen")
+boxplot(data$Waist, main="Waist Box Plot", horizontal=FALSE, col="lightcoral")
 
 # Multi-dimensional scaling
 # Prepare the data for MDS
@@ -117,3 +117,140 @@ cat("Unique Isolation Forest Outliers Indices:", unique_isolation_forest, "\n")
 ## Question 4
 
 library(arules)
+library(arulesViz)
+
+# Load the dataset
+bank_data <- read.csv("bank.csv", stringsAsFactors = TRUE)
+
+# Step 1: Split the single column into multiple columns
+# Rename the single column to a temporary name
+colnames(bank_data) <- "data"
+bank_data <- bank_data %>%
+  separate(data, into = c("age", "job", "marital", "education", "default", 
+                          "balance", "housing", "loan", "contact", 
+                          "day", "month", "duration", "campaign", 
+                          "pdays", "previous", "poutcome", "y"), 
+           sep = ";")
+
+# Step 2: Remove specified columns
+bank_data <- bank_data %>%
+  select(-job, -contact, -pdays, -poutcome, -month, -day)
+
+# Step 3: Discretize the age column
+bank_data$age <- as.numeric(as.character(bank_data$age))  # Convert age to numeric
+bank_data$age <- case_when(
+  bank_data$age < 35 ~ "young",
+  bank_data$age >= 35 & bank_data$age <= 55 ~ "adult",
+  bank_data$age > 55 ~ "old"
+)
+
+# Step 4: Convert remaining numeric columns to factors based on median
+# Identify numeric columns
+check_numeric_cols <-sapply(bank_data, function(x) {
+  # Try converting and check if there are any NAs
+  suppressWarnings(all(!is.na(as.numeric(as.character(x)))))
+})
+numeric_cols <- names(bank_data)[check_numeric_cols]
+#Convert numeric columns to factors based on median using dplyr
+bank_data[numeric_cols] <- lapply(bank_data[numeric_cols], function(x) {
+  factor(ifelse(x < median(x, na.rm = TRUE), "low", "high"))
+})
+
+# Step 5: Analyze remaining categorical columns with the frequency distribution
+# Create a new dataframe with only categorical columns
+categorical_cols <- setdiff(names(bank_data), numeric_cols)
+# Iterate over all categorical columns and create frequency tables
+for (col_name in categorical_cols) {
+  category_table <- table(bank_data[[col_name]])
+  
+  # Print the category table for each categorical column
+  cat("\nFrequency table for", col_name, ":\n")
+  print(category_table)
+}
+
+# For the marital column
+bank_data$marital <- ifelse(median(c(0, 0, 1)) < ifelse(bank_data$marital == "married", 1, 0), "high", "low")
+
+# For the education column
+# Assign numeric values for education categories (excluding "unknown")
+bank_data$education_numeric <- ifelse(bank_data$education == "primary", 0,
+                                      ifelse(bank_data$education == "secondary", 1,
+                                             ifelse(bank_data$education == "tertiary", 2, NA)))
+# Compute the median of the numeric values (excluding NAs)
+education_median <- median(bank_data$education_numeric, na.rm = TRUE)
+# Classify as "high" or "low" based on the median
+bank_data$education <- ifelse(bank_data$education_numeric > education_median, "high", "low")
+
+
+# For the default column
+# Assign numeric values for the default column
+bank_data$default_numeric <- ifelse(bank_data$default == "no", 0,
+                                    ifelse(bank_data$default == "yes", 1, NA))
+
+# Compute the median of the numeric values (excluding NAs)
+default_median <- median(bank_data$default_numeric, na.rm = TRUE)
+
+# Classify as "high" or "low" based on the median
+bank_data$default <- ifelse(bank_data$default_numeric > default_median, "high", "low")
+
+# For the housing
+# Assign numeric values for the housing column
+bank_data$housing_numeric <- ifelse(bank_data$housing == "no", 0,
+                                    ifelse(bank_data$housing == "yes", 1, NA))
+
+# Compute the median of the numeric values (excluding NAs)
+housing_median <- median(bank_data$housing_numeric, na.rm = TRUE)
+
+# Classify as "high" or "low" based on the median
+bank_data$housing <- ifelse(bank_data$housing_numeric > housing_median, "high", "low")
+
+
+#For the loan
+# Assign numeric values for the loan column
+bank_data$loan_numeric <- ifelse(bank_data$loan == "no", 0,
+                                 ifelse(bank_data$loan == "yes", 1, NA))
+
+# Compute the median of the numeric values (excluding NAs)
+loan_median <- median(bank_data$loan_numeric, na.rm = TRUE)
+
+# Classify as "high" or "low" based on the median
+bank_data$loan <- ifelse(bank_data$loan_numeric > loan_median, "high", "low")
+
+
+# Step 1: Prepare the data
+# Convert all columns to factors
+bank_data[] <- lapply(bank_data, as.factor)
+
+# Step 2: Generate rules with y as the RHS
+# Adjust parameters to reduce the number of rules
+rule0 <- apriori(as.data.frame(bank_data), 
+                 parameter = list(minlen = 2, supp = 0.5, conf = 0.8, maxlen = 5),
+                 appearance = list(rhs = c("y=yes", "y=no"), default = "lhs"))
+
+# Sort by lift
+sorted0 <- sort(rule0, by = "lift")
+cat("Rules with y as RHS (sorted by lift):\n")
+inspect(head(sorted0))
+
+# Rule 1: Rules with y=yes as RHS
+rule1 <- apriori(as.data.frame(bank_data), 
+                 parameter = list(minlen = 2, supp = 0.5, conf = 0.8, maxlen = 5),
+                 appearance = list(rhs = "y=yes", default = "lhs"))
+
+# Sort by confidence
+sorted1 <- sort(rule1, by = "confidence")
+cat("Rules with y=yes (sorted by confidence):\n")
+inspect(head(sorted1))
+
+# Rule 2: Rules with y=no as RHS
+rule2 <- apriori(as.data.frame(bank_data), 
+                 parameter = list(minlen = 2, supp = 0.5, conf = 0.8, maxlen = 5),
+                 appearance = list(rhs = "y=no", default = "lhs"))
+
+# Sort by confidence
+sorted2 <- sort(rule2, by = "confidence")
+cat("Rules with y=no (sorted by confidence):\n")
+inspect(head(sorted2))
+
+###################################
+

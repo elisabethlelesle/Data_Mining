@@ -341,9 +341,31 @@ rules <- apriori(bank_data,
 rules_sorted <- sort(rules, by = "lift")
 inspect(head(rules_sorted, 20))
 
+<<<<<<< HEAD
 # Count feature frequencies in LHS
 lhs_items <- labels(lhs(rules))
 lhs_features <- unlist(strsplit(lhs_items, ","))
+=======
+# Rule 1: Rules with y=yes as RHS
+rule1 <- apriori(as.data.frame(bank_data), 
+                 parameter = list(minlen = 2, supp = 0.1, conf = 0.1),
+                 appearance = list(rhs = "y=yes", default = "lhs"))
+
+# Sort by count
+sorted1 <- sort(rule1, by = "count")
+cat("Rules with y=yes (sorted by count):\n")
+inspect(head(sorted1))
+
+# Rule 2: Rules with y=no as RHS
+rule2 <- apriori(as.data.frame(bank_data), 
+                 parameter = list(minlen = 2, supp = 0.5, conf = 0.8, maxlen = 5),
+                 appearance = list(rhs = "y=no", default = "lhs"))
+
+# Sort by count
+sorted2 <- sort(rule2, by = "count")
+cat("Rules with y=no (sorted by count):\n")
+inspect(head(sorted2))
+>>>>>>> e1ab97ffab0969e094f8a3bd3508a51ad0d85c18
 
 feature_counts <- sort(table(lhs_features), decreasing = TRUE)
 print(feature_counts)

@@ -95,25 +95,103 @@ library(caret)
 library(class)
 library(Metrics)  # For performance metrics
 
-# Load the dataset
+### Load the dataset
 white_wine_data <- read.csv("winequality-white.csv")
 summary(white_wine_data)
 
-# Fit the MLR model
+### Fit the MLR model
 mlr_model <- lm(quality ~ ., data = white_wine_data)
 summary(mlr_model)  # Show summary to identify significant predictors
 
-# Extract significant predictors (p-value < 0.05)
-significant_predictors <- summary(mlr_model)$coefficients[summary(mlr_model)$coefficients[, 4] < 0.05, ]
+### Extract significant predictors (p-value < 0.05)
+significant_predictors <- rownames(summary(mlr_model)$coefficients)[summary(mlr_model)$coefficients[, 4] < 0.05]
+significant_predictors <- significant_predictors[significant_predictors != "(Intercept)"]
 print(significant_predictors)
 
-# Split the data into training (80%) and testing (20%) sets
+### Split the data into training (80%) and testing (20%) sets
 train_index <- createDataPartition(white_wine_data$quality, p = 0.8, list = FALSE)
 train_data <- white_wine_data[train_index, ]
 test_data <- white_wine_data[-train_index, ]
 
-# Normalize the data (excluding the target variable)
-train_data_normalized <- as.data.frame(scale(train_data[, -which(names(train_data) == "quality")]))
-train_data_normalized$quality <- train_data$quality
-test_data_normalized <- as.data.frame(scale(test_data[, -which(names(test_data) == "quality")]))
-test_data_normalized$quality <- test_data$quality
+### Subset data to include only significant predictors
+train_data_significant <- train_data[, c(significant_predictors, "quality")]
+test_data_significant <- test_data[, c(significant_predictors, "quality")]
+
+### Normalize the data (excluding the target variable)
+train_data_normalized <- as.data.frame(scale(train_data_significant[, -which(names(train_data_significant) == "quality")]))
+train_data_normalized$quality <- train_data_significant$quality
+test_data_normalized <- as.data.frame(scale(test_data_significant[, -which(names(test_data_significant) == "quality")]))
+test_data_normalized$quality <- test_data_significant$quality
+
+### Choice of k: 
+# Range of k values to test
+k_values <- 1:20
+rmse_values <- numeric(length(k_values))
+mae_values <- numeric(length(k_values))
+mape_values <- numeric(length(k_values))
+
+# Evaluate KNN for different k values
+for (k in k_values) {
+  knn_predictions <- knn(train = train_data_normalized[, -which(names(train_data_normalized) == "quality")],
+                         test = test_data_normalized[, -which(names(test_data_normalized) == "quality")],
+                         cl = train_data_normalized$quality,
+                         k = k)
+  
+  knn_predictions_numeric <- as.numeric(knn_predictions)
+  
+  # Calculate performance metrics
+  rmse_values[k] <- rmse(test_data$quality, knn_predictions_numeric)
+  mae_values[k] <- mae(test_data$quality, knn_predictions_numeric)
+  mape_values[k] <- mape(test_data$quality, knn_predictions_numeric)
+}
+
+### Create separate plots for RMSE, MAE, and MAPE
+
+# RMSE Plot
+ggplot(data.frame(k = k_values, RMSE = rmse_values), aes(x = k, y = RMSE)) +
+  geom_line(color = "blue", size = 1) +
+  geom_point(color = "red", size = 2) +
+  labs(title = "RMSE vs. Number of Neighbors (k)",
+       x = "Number of Neighbors (k)",
+       y = "Root Mean Squared Error (RMSE)") +
+  theme_minimal()
+
+# MAE Plot
+ggplot(data.frame(k = k_values, MAE = mae_values), aes(x = k, y = MAE)) +
+  geom_line(color = "green", size = 1) +
+  geom_point(color = "orange", size = 2) +
+  labs(title = "MAE vs. Number of Neighbors (k)",
+       x = "Number of Neighbors (k)",
+       y = "Mean Absolute Error (MAE)") +
+  theme_minimal()
+
+# MAPE Plot
+ggplot(data.frame(k = k_values, MAPE = mape_values), aes(x = k, y = MAPE)) +
+  geom_line(color = "purple", size = 1) +
+  geom_point(color = "pink", size = 2) +
+  labs(title = "MAPE vs. Number of Neighbors (k)",
+       x = "Number of Neighbors (k)",
+       y = "Mean Absolute Percentage Error (MAPE)") +
+  theme_minimal()
+
+### Final choice of k by interpreting graph (choose elbow value)
+k <- 3
+knn_predictions <- knn(train = train_data_normalized[, -which(names(train_data_normalized) == "quality")],
+                       test = test_data_normalized[, -which(names(test_data_normalized) == "quality")],
+                       cl = train_data_normalized$quality,
+                       k = k)
+
+# Convert KNN predictions to numeric
+knn_predictions_numeric <- as.numeric(knn_predictions)
+
+# Calculate performance metrics for KNN
+knn_rmse <- rmse(test_data$quality, knn_predictions_numeric)
+knn_mae <- mae(test_data$quality, knn_predictions_numeric)
+knn_mape <- mape(test_data$quality, knn_predictions_numeric)
+
+# Output performance metrics
+cat("KNN Performance Metrics:\n")
+cat("Lowest RMSE for k=3:", knn_rmse, "\n")
+cat("Lowest MAE for k=3:", knn_mae, "\n")
+cat("Lowest MAPE for k=3:", knn_mape, "\n")
+

@@ -195,3 +195,15 @@ cat("Lowest RMSE for k=3:", knn_rmse, "\n")
 cat("Lowest MAE for k=3:", knn_mae, "\n")
 cat("Lowest MAPE for k=3:", knn_mape, "\n")
 
+### Compare with MLR predictions
+mlr_predictions <- predict(mlr_model, newdata = test_data)
+
+# Calculate performance metrics for MLR
+mlr_rmse <- rmse(test_data$quality, mlr_predictions)
+mlr_mae <- mae(test_data$quality, mlr_predictions)
+mlr_mape <- mape(test_data$quality, mlr_predictions)
+
+cat("MLR Performance Metrics:\n")
+cat("RMSE:", mlr_rmse, "\n")
+cat("MAE:", mlr_mae, "\n")
+cat("MAPE:", mlr_mape, "\n")

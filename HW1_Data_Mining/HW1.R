@@ -43,7 +43,7 @@ mds_df <- data.frame(MDS1 = mdsx, MDS2 = mdsy, Gender = factor(data$Gender))
 # ggplot for MDS
 p <- ggplot(mds_df, aes(x = MDS1, y = MDS2)) +
   geom_point(size = 3, aes(colour = Gender, shape = Gender)) +
-  labs(title = "MDS for Gender Data", x = "MDS Dimension 1", y = "MDS Dimension 2") +
+  labs(title = "MDS for Gender Data", x = "Correlation of Height and Weight", y = "Waist Measurement Influence") +
   theme_minimal()
 # Display the ggplot
 print(p)
@@ -121,8 +121,11 @@ data_India <- data$INDIA
 sma_10 <- stats::filter(data_Japan, rep(1/10, 10), sides=1)
 sma_20 <- stats::filter(data_Japan, rep(1/20, 20), sides=1)
 
+
+dates <- data$Date
+
 # Plot the SMA results
-plot_df_SMA <- data.frame(Date = 1:length(data_Japan), Japan = data_Japan, SMA_10 = sma_10, SMA_20 = sma_20)
+plot_df_SMA <- data.frame(Date = dates, Japan = data_Japan, SMA_10 = sma_10, SMA_20 = sma_20)
 
 ggplot(plot_df_SMA, aes(x = Date)) +
   geom_line(aes(y = SMA_10, color = "SMA 10"), size = 1) +
@@ -163,11 +166,14 @@ exp_smooth_045 <- HoltWinters(data_India, alpha = lambda2, beta = FALSE, gamma =
 #add one value at the beginning since expontial smoothing turn a array of size n in
 # an array of size n-1 because we want to compare it with the original data that has
 # 1 more value
-fitted_025 <- c(exp_smooth_025[1,1], exp_smooth_025$fitted[,1])
-fitted_045 <- c(exp_smooth_045[1,1], exp_smooth_045$fitted[,1])
+fitted_025 <- exp_smooth_025$fitted[, 1]  
+fitted_045 <- exp_smooth_045$fitted[, 1]
+
+fitted_025 <- c(rep(NA, length(data_India) - length(fitted_025)), fitted_025)
+fitted_045 <- c(rep(NA, length(data_India) - length(fitted_045)), fitted_045)
 
 #plotting everything
-plot_df_ES <- data.frame(Date = 1:length(data_India), India = data_India,ES25 = fitted_025, ES45 = fitted_045)
+plot_df_ES <- data.frame(Date = dates, India = data_India,ES25 = fitted_025, ES45 = fitted_045)
 
 ggplot(plot_df_ES, aes(x = Date)) +
   geom_line(aes(y = ES25, color = "ES 25"), size = 1) +
@@ -288,16 +294,58 @@ bank_data[] <- lapply(bank_data, as.factor)
 
 ### Generate rules with y as the RHS
 
-# Adjust parameters to reduce the number of rules
-rule0 <- apriori(as.data.frame(bank_data), 
-                 parameter = list(minlen = 2, supp = 0.5, conf = 0.8, maxlen = 5),
+# 
+# # Adjust parameters to reduce the number of rules
+# rule0 <- apriori(as.data.frame(bank_data), 
+#                  parameter = list(minlen = 2, supp = 0.5, conf = 0.8, maxlen = 5),
+#                  appearance = list(rhs = c("y=yes", "y=no"), default = "lhs"))
+# 
+# # Sort by lift
+# sorted0 <- sort(rule0, by = "lift")
+# cat("Rules with y as RHS (sorted by lift):\n")
+# inspect(head(sorted0))
+# 
+# # Rule 1: Rules with y=yes as RHS
+# rule1 <- apriori(as.data.frame(bank_data), 
+#                  parameter = list(minlen = 2, supp = 0.1, conf = 0.1),
+#                  appearance = list(rhs = "y=yes", default = "lhs"))
+# 
+# # Sort by confidence
+# sorted1 <- sort(rule1, by = "count")
+# cat("Rules with y=yes (sorted by count):\n")
+# inspect(head(sorted1))
+# 
+# # Rule 2: Rules with y=no as RHS
+# rule2 <- apriori(as.data.frame(bank_data), 
+#                  parameter = list(minlen = 2, supp = 0.5, conf = 0.8, maxlen = 5),
+#                  appearance = list(rhs = "y=no", default = "lhs"))
+# 
+# # Identify significant rules
+# rules_sorted <- sort(rules, by = "lift")
+# inspect(head(rules_sorted, 20))
+# 
+# # Count feature frequencies in LHS
+# lhs_items <- labels(lhs(rules))
+# lhs_features <- unlist(strsplit(lhs_items, ","))
+# 
+# feature_counts <- sort(table(lhs_features), decreasing = TRUE)
+# print(feature_counts)
+# 
+
+# Generate association rules with adjusted parameters
+rules <- apriori(bank_data, 
+                 parameter = list(supp = 0.01, conf = 0.25, maxlen = 5),
                  appearance = list(rhs = c("y=yes", "y=no"), default = "lhs"))
 
-# Sort by lift
-sorted0 <- sort(rule0, by = "lift")
-cat("Rules with y as RHS (sorted by lift):\n")
-inspect(head(sorted0))
+# Identify significant rules
+rules_sorted <- sort(rules, by = "lift")
+inspect(head(rules_sorted, 20))
 
+<<<<<<< HEAD
+# Count feature frequencies in LHS
+lhs_items <- labels(lhs(rules))
+lhs_features <- unlist(strsplit(lhs_items, ","))
+=======
 # Rule 1: Rules with y=yes as RHS
 rule1 <- apriori(as.data.frame(bank_data), 
                  parameter = list(minlen = 2, supp = 0.1, conf = 0.1),
@@ -317,43 +365,39 @@ rule2 <- apriori(as.data.frame(bank_data),
 sorted2 <- sort(rule2, by = "count")
 cat("Rules with y=no (sorted by count):\n")
 inspect(head(sorted2))
+>>>>>>> e1ab97ffab0969e094f8a3bd3508a51ad0d85c18
 
+feature_counts <- sort(table(lhs_features), decreasing = TRUE)
+print(feature_counts)
 
 # Question 5 ----
 
 # Load necessary libraries
-library(ggplot2)
 library(dplyr)
-library(tidyr)
-library(MASS)
-library(readxl)
-library(forecast)
 library(arules)
 
+# Read the data
 data <- read.csv("Pima.csv")
-removedZeroes <- filter(data, data$Glucose != 0, data$BloodPressure != 0,
-                        data$SkinThickness != 0, data$Insulin != 0, data$BMI != 0)
+
+# Filter out zeroes
+removedZeroes <- filter(data, Glucose != 0, BloodPressure != 0,
+                        SkinThickness != 0, Insulin != 0, BMI != 0)
 
 # Convert 'Outcome' to factor with labels 'Yes' and 'No'
-removedZeroes$Outcome <- factor(removedZeroes$Outcome, levels = c(0,1), labels = c("No", "Yes"))
+removedZeroes$Outcome <- factor(removedZeroes$Outcome, levels = c(0, 1), labels = c("No", "Yes"))
 
-
+# Create new factors based on median values and convert them to factors
 filtered_data <- removedZeroes %>%
   mutate(
     Glucose_level = ifelse(Glucose > median(Glucose), "High", "Low"),
     BloodPressure_level = ifelse(BloodPressure > median(BloodPressure), "High", "Low"),
     SkinThickness_level = ifelse(SkinThickness > median(SkinThickness), "High", "Low"),
     Insulin_level = ifelse(Insulin > median(Insulin), "High", "Low"),
-    BMI_level = ifelse(BMI > median(BMI), "High", "Low"),
-  )
+    BMI_level = ifelse(BMI > median(BMI), "High", "Low")
+  ) %>%
+  mutate_at(vars(Glucose_level, BloodPressure_level, SkinThickness_level, Insulin_level, BMI_level), as.factor)
 
-filtered_data$Glucose_level <- as.factor(filtered_data$Glucose_level)
-filtered_data$BloodPressure_level <- as.factor(filtered_data$BloodPressure_level)
-filtered_data$SkinThickness_level <- as.factor(filtered_data$SkinThickness_level)
-filtered_data$Insulin_level <- as.factor(filtered_data$Insulin_level)
-filtered_data$BMI_level <- as.factor(filtered_data$BMI_level)
-
-# Select the relevant columns for association rule mining
+# Select the relevant columns
 trans_data <- filtered_data %>%
   dplyr::select(Glucose_level, BloodPressure_level, SkinThickness_level, Insulin_level, BMI_level, Outcome)
 
@@ -362,23 +406,71 @@ transactions <- as(trans_data, "transactions")
 
 # Generate association rules with RHS = 'Outcome=Yes'
 rules_yes <- apriori(transactions,
-                     parameter = list(supp = 0.1, conf = 0.5, minlen = 2),
+                     parameter = list(supp = 0.1, conf = 0.3, minlen = 2),
                      appearance = list(rhs = c("Outcome=Yes"), default = "lhs"))
 
 # Generate association rules with RHS = 'Outcome=No'
 rules_no <- apriori(transactions,
-                    parameter = list(supp = 0.1, conf = 0.5, minlen = 2),
+                    parameter = list(supp = 0.1, conf = 0.3, minlen = 2),
                     appearance = list(rhs = c("Outcome=No"), default = "lhs"))
 
-# Sort the rules for 'Outcome=Yes' by support
-sorted_rules_yes <- sort(rules_yes, by = "count", decreasing = TRUE)
+### Function to sort rules based on hierarchical presence of features ###
+sort_rules_by_feature_hierarchy <- function(rules) {
+  # Extract LHS items as a list
+  lhs_items_list <- LIST(lhs(rules))
+  
+  # Flatten the list to get all LHS items
+  lhs_features <- unlist(lhs_items_list)
+  
+  # Count the frequency of each feature in the LHS
+  feature_counts <- table(lhs_features)
+  
+  # Get features sorted by frequency in descending order
+  sorted_features <- names(sort(feature_counts, decreasing = TRUE))
+  
+  # For each rule, create a presence vector indicating the presence (1) or absence (0) of each feature
+  presence_matrix <- sapply(lhs_items_list, function(items) {
+    as.integer(sorted_features %in% items)
+  })
+  
+  # Transpose the matrix so that each row corresponds to a rule
+  presence_matrix <- t(presence_matrix)
+  
+  # Convert the presence matrix to a data frame
+  presence_df <- as.data.frame(presence_matrix)
+  
+  # Use do.call(order, ...) to get the order of the rules based on the presence vectors
+  # We use '-' to sort in decreasing order (presence first)
+  order_args <- lapply(presence_df, function(x) -x)
+  sorted_indices <- do.call(order, order_args)
+  
+  # Sort the rules
+  sorted_rules <- rules[sorted_indices]
+  
+  return(sorted_rules)
+}
 
-# Sort the rules for 'Outcome=No' by support
-sorted_rules_no <- sort(rules_no, by = "count", decreasing = TRUE)
+### Processing 'Outcome=Yes' Rules ###
 
-# Get LHS item frequencies for 'Outcome=Yes'
-inspect(head(sorted_rules_yes))
-inspect(head(sorted_rules_no))
+# Sort rules for 'Outcome=Yes'
+sorted_rules_yes <- sort_rules_by_feature_hierarchy(rules_yes)
+
+# Extract the top 20 sorted rules
+top20_sorted_rules_yes <- head(sorted_rules_yes, 20)
+
+# Inspect the top 20 sorted rules for 'Outcome=Yes'
+inspect(top20_sorted_rules_yes)
+
+### Processing 'Outcome=No' Rules ###
+
+# Sort rules for 'Outcome=No'
+sorted_rules_no <- sort_rules_by_feature_hierarchy(rules_no)
+
+# Extract the top 20 sorted rules
+top20_sorted_rules_no <- head(sorted_rules_no, 20)
+
+# Inspect the top 20 sorted rules for 'Outcome=No'
+inspect(top20_sorted_rules_no)
 
 
 # Question 6 ----

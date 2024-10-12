@@ -85,3 +85,35 @@ fviz_cluster(
 ) + 
   ggtitle("Cluster Plot Using K-Medoids")  # Add title here
 
+
+
+################################# Question 2
+#install.packages("caret")
+#install.packages("Metrics")
+library(ggplot2)
+library(caret)
+library(class)
+library(Metrics)  # For performance metrics
+
+# Load the dataset
+white_wine_data <- read.csv("winequality-white.csv")
+summary(white_wine_data)
+
+# Fit the MLR model
+mlr_model <- lm(quality ~ ., data = white_wine_data)
+summary(mlr_model)  # Show summary to identify significant predictors
+
+# Extract significant predictors (p-value < 0.05)
+significant_predictors <- summary(mlr_model)$coefficients[summary(mlr_model)$coefficients[, 4] < 0.05, ]
+print(significant_predictors)
+
+# Split the data into training (80%) and testing (20%) sets
+train_index <- createDataPartition(white_wine_data$quality, p = 0.8, list = FALSE)
+train_data <- white_wine_data[train_index, ]
+test_data <- white_wine_data[-train_index, ]
+
+# Normalize the data (excluding the target variable)
+train_data_normalized <- as.data.frame(scale(train_data[, -which(names(train_data) == "quality")]))
+train_data_normalized$quality <- train_data$quality
+test_data_normalized <- as.data.frame(scale(test_data[, -which(names(test_data) == "quality")]))
+test_data_normalized$quality <- test_data$quality

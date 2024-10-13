@@ -207,3 +207,68 @@ cat("MLR Performance Metrics:\n")
 cat("RMSE:", mlr_rmse, "\n")
 cat("MAE:", mlr_mae, "\n")
 cat("MAPE:", mlr_mape, "\n")
+
+
+
+################################# Question 3
+library(ggplot2)
+library(caret)
+library(class)
+library(Metrics)  
+
+### Load the dataset
+white_wine_data <- read.csv("winequality-white.csv")
+
+# Convert quality to a binary factor
+white_wine_data$quality <- as.factor(ifelse(white_wine_data$quality <= 5, "Poor", "Good"))
+
+train_index <- createDataPartition(white_wine_data$quality, p = 0.8, list = FALSE)
+train_data <- white_wine_data[train_index, ]
+test_data <- white_wine_data[-train_index, ]
+
+train_data_normalized <- as.data.frame(scale(train_data[, -which(names(train_data) == "quality")]))
+train_data_normalized$quality <- train_data$quality
+test_data_normalized <- as.data.frame(scale(test_data[, -which(names(test_data) == "quality")]))
+test_data_normalized$quality <- test_data$quality
+
+k_values <- 1:20
+accuracy_values <- numeric(length(k_values))
+
+for (k in k_values) {
+  # Make predictions using KNN
+  knn_predictions <- knn(train = train_data_normalized[, -which(names(train_data_normalized) == "quality")],
+                         test = test_data_normalized[, -which(names(test_data_normalized) == "quality")],
+                         cl = train_data_normalized$quality,
+                         k = k)
+  
+  # Calculate overall accuracy
+  accuracy_values[k] <- mean(knn_predictions == test_data_normalized$quality)
+}
+
+# Plot accuracy for different k values
+ggplot(data.frame(k = k_values, Accuracy = accuracy_values), aes(x = k, y = Accuracy)) +
+  geom_line(color = "blue", size = 1) +
+  geom_point(color = "red", size = 2) +
+  labs(title = "Accuracy vs. Number of Neighbors (k)",
+       x = "Number of Neighbors (k)",
+       y = "Accuracy") +
+  theme_minimal()
+
+k<- 2 # 2 elbow values: 2 and 7 , overall accuracy is better by 0.002 for k=2
+
+# Make predictions with the best k
+final_knn_predictions <- knn(train = train_data_normalized[, -which(names(train_data_normalized) == "quality")],
+                             test = test_data_normalized[, -which(names(test_data_normalized) == "quality")],
+                             cl = train_data_normalized$quality,
+                             k = k)
+
+# Calculate overall accuracy
+overall_accuracy <- mean(final_knn_predictions == test_data_normalized$quality)
+
+# Calculate class-wise accuracies
+confusion_matrix <- table(test_data_normalized$quality, final_knn_predictions)
+class_accuracy <- diag(prop.table(confusion_matrix, margin = 1))
+
+cat("Overall accuracy:", overall_accuracy, "\n")
+cat("Accuracy for Poor quality:", class_accuracy["Poor"], "\n")
+cat("Accuracy for Good quality:", class_accuracy["Good"], "\n")

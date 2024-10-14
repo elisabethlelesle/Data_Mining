@@ -254,7 +254,7 @@ ggplot(data.frame(k = k_values, Accuracy = accuracy_values), aes(x = k, y = Accu
        y = "Accuracy") +
   theme_minimal()
 
-k<- 2 # 2 elbow values: 2 and 7 , overall accuracy is better by 0.002 for k=2
+k<- 5 # 2 peak values: 5 and 8 , overall accuracy is better by 0.002 for k=5
 
 # Make predictions with the best k
 final_knn_predictions <- knn(train = train_data_normalized[, -which(names(train_data_normalized) == "quality")],

@@ -50,7 +50,9 @@ fviz_cluster(
   ellipse.type = "convex",
   ggtheme = theme_bw()
 ) + 
-  ggtitle("Cluster Plot Using K-Means") 
+  ggtitle("Cluster Plot Using K-Means") +
+  xlab("Principal Component 1 (PC1)") +
+  ylab("Principal Component 2 (PC2)")
 
 ### K-medoids
 pam_result <- pam(red_wine_data, k = optimal_clusters)
@@ -83,7 +85,9 @@ fviz_cluster(
   ellipse.type = "convex",
   ggtheme = theme_bw()
 ) + 
-  ggtitle("Cluster Plot Using K-Medoids")  # Add title here
+  ggtitle("Cluster Plot Using K-Medoids") +
+  xlab("Principal Component 1 (PC1)") +
+  ylab("Principal Component 2 (PC2)")
 
 
 
@@ -282,7 +286,7 @@ cat("Accuracy for Good quality:", class_accuracy["Good"], "\n")
 
 
 
-######### Question 4 ----
+################################# Question 4 ----
 #install.packages("e1071")
 library(e1071)
 
@@ -379,7 +383,7 @@ for (i in 1:(nrow(centroids2) - 1)) {
 }
 
 
-##### Question 5 ----
+################################# Question 5 ----
 #install.packages("mclust")
 library(mclust) #BIC: Bayesian information criteria
 
@@ -436,7 +440,7 @@ for (i in 1:(ncol(centroids) - 1)) {
 }
 
 
-##### Question 6----
+################################# Question 6----
 # Install and load clusterSim if needed
 # install.packages("clusterSim")
 #install.packages("R2HTML")

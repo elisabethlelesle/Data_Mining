@@ -211,10 +211,17 @@ cat("MAPE:", mlr_mape, "\n")
 
 
 ################################# Question 3
+#install.packages("ggplot2")
+#install.packages("caret", dependencies = TRUE)
+
 library(ggplot2)
 library(caret)
 library(class)
-library(Metrics)  
+library(Metrics)
+library(NbClust)
+library(cluster)
+library(factoextra)
+
 
 ### Load the dataset
 white_wine_data <- read.csv("winequality-white.csv")

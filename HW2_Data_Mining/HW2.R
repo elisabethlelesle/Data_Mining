@@ -485,16 +485,89 @@ cat("Best number of clusters (Complete Link):", best_complete, "\n")
 cat("Best number of clusters (Group Average):", best_average, "\n")
 cat("Best number of clusters (Ward's Method):", best_ward, "\n")
 
-# Example: Use Ward's method with the best number of clusters
-best_clusters <- cutree(fithc_ward, k = best_ward)
+
+
+#Use single method with the best number of clusters
+best_clusters_1 <- cutree(fithc_ward, k = best_single)
+
+# Create a contingency table to show gender distribution in each cluster
+cat("\nContingency Table (single Method):\n")
+gender_cluster_table_1 <- table(gender_labels, best_clusters_1)
+print(gender_cluster_table_1)
+
+# Determine the majority class (Male or Female) in each cluster
+majority_class_1 <- apply(gender_cluster_table_1, 2, function(col) {
+  if (col["female"] > col["male"]) {
+    return("Female")
+  } else {
+    return("Male")
+  }
+})
+
+cat("\nMajority class in each cluster (single Method):\n")
+print(majority_class_1)
+
+
+
+
+#Use complete method with the best number of clusters
+best_clusters_2 <- cutree(fithc_ward, k = best_complete)
+
+# Create a contingency table to show gender distribution in each cluster
+cat("\nContingency Table (complete Method):\n")
+gender_cluster_table_2 <- table(gender_labels, best_clusters_2)
+print(gender_cluster_table_2)
+
+# Determine the majority class (Male or Female) in each cluster
+majority_class_2 <- apply(gender_cluster_table_2, 2, function(col) {
+  if (col["female"] > col["male"]) {
+    return("Female")
+  } else {
+    return("Male")
+  }
+})
+
+cat("\nMajority class in each cluster (complete Method):\n")
+print(majority_class_2)
+
+
+
+
+
+#Use average method with the best number of clusters
+best_clusters_3 <- cutree(fithc_ward, k = best_average)
+
+# Create a contingency table to show gender distribution in each cluster
+cat("\nContingency Table (average Method):\n")
+gender_cluster_table_3 <- table(gender_labels, best_clusters_3)
+print(gender_cluster_table_3)
+
+# Determine the majority class (Male or Female) in each cluster
+majority_class_3 <- apply(gender_cluster_table_3, 2, function(col) {
+  if (col["female"] > col["male"]) {
+    return("Female")
+  } else {
+    return("Male")
+  }
+})
+
+cat("\nMajority class in each cluster (average Method):\n")
+print(majority_class_3)
+
+
+
+
+
+#Use Ward's method with the best number of clusters
+best_clusters_4 <- cutree(fithc_ward, k = best_ward)
 
 # Create a contingency table to show gender distribution in each cluster
 cat("\nContingency Table (Ward's Method):\n")
-gender_cluster_table <- table(gender_labels, best_clusters)
-print(gender_cluster_table)
+gender_cluster_table_4 <- table(gender_labels, best_clusters_4)
+print(gender_cluster_table_4)
 
 # Determine the majority class (Male or Female) in each cluster
-majority_class <- apply(gender_cluster_table, 2, function(col) {
+majority_class_4 <- apply(gender_cluster_table_4, 2, function(col) {
   if (col["female"] > col["male"]) {
     return("Female")
   } else {
@@ -503,4 +576,4 @@ majority_class <- apply(gender_cluster_table, 2, function(col) {
 })
 
 cat("\nMajority class in each cluster (Ward's Method):\n")
-print(majority_class)
+print(majority_class_4)

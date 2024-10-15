@@ -272,3 +272,235 @@ class_accuracy <- diag(prop.table(confusion_matrix, margin = 1))
 cat("Overall accuracy:", overall_accuracy, "\n")
 cat("Accuracy for Poor quality:", class_accuracy["Poor"], "\n")
 cat("Accuracy for Good quality:", class_accuracy["Good"], "\n")
+
+
+
+######### Question 4 ----
+#install.packages("e1071")
+library(e1071)
+
+data <- read.csv("Pima.csv")
+
+# clean the data
+data$Glucose[data$Glucose == 0] <- NA
+data$BloodPressure[data$BloodPressure == 0] <- NA
+data$SkinThickness[data$SkinThickness == 0] <- NA
+data$Insulin[data$Insulin == 0] <- NA
+data$BMI[data$BMI == 0] <- NA
+# remove rows with NA
+data <- na.omit(data)
+
+outcome_labels <- ifelse(data$Outcome == 1, "Yes", "No")  # Yes/No labels
+#exclude outcome column
+data <- data[, -ncol(data)]
+
+# fuzzy C-means 
+
+min.nc <- 2  # Minimum number of clusters
+max.nc <- 10  # Maximum number of clusters
+
+
+CM= array(0, c(max.nc-min.nc+1, 2))
+for (nc in min.nc : max.nc)
+{ 
+  fitcm=cmeans(data, centers=nc, m=2, verbose=TRUE, method="cmeans")
+  CM[nc-(min.nc-1), 1]= fclustIndex(fitcm, data, index="xie.beni")
+  CM[nc-(min.nc-1), 2]= fclustIndex(fitcm, data, index="fukuyama.sugeno")
+}
+
+# Find the optimal number of clusters based on the minimum index values
+best_xie_beni <- which(CM[, 1] == min(CM[, 1])) + min.nc - 1
+best_fukuyama <- which(CM[, 2] == min(CM[, 2])) + min.nc - 1
+
+# Print the best cluster numbers
+cat("Best number of clusters (Xie-Beni):", best_xie_beni, "\n")
+cat("Best number of clusters (Fukuyama-Sugeno):", best_fukuyama, "\n")
+
+
+# Perform fuzzy c-means clustering with the best number of clusters (from Xie-Beni)
+optimal_clusters <- best_xie_beni[1]  # Using Xie-Beni index result
+result <- cmeans(data, centers = optimal_clusters, m = 2, iter.max = 200, verbose = TRUE, method = "cmeans")
+
+# Print the centroids
+cat("\nCluster Centroids:\n")
+print(result$centers)
+
+# Create a contingency table between Outcome labels and cluster assignments
+cat("\nContingency Table between Outcome Labels and Clusters:\n")
+table(outcome_labels, result$cluster)
+
+# Calculate Euclidean distances between all pairs of centroids
+cat("\nEuclidean Distances between Centroids:\n")
+centroids <- result$centers
+
+# Function to calculate Euclidean distance
+euclidean_distance <- function(x, y) {
+  sqrt(sum((x - y) ^ 2))
+}
+
+# Calculate and print the distances
+for (i in 1:(nrow(centroids) - 1)) {
+  for (j in (i + 1):nrow(centroids)) {
+    cat(sprintf("Distance between centroid %d and %d: %.4f\n", i, j,
+                euclidean_distance(centroids[i, ], centroids[j, ])))
+  }
+}
+
+
+# Perform fuzzy c-means clustering with the best number of clusters (from fukuyama)
+optimal_clusters2 <- best_fukuyama[1]  # Using fukuyama index result
+result2 <- cmeans(data, centers = optimal_clusters2, m = 2, iter.max = 200, verbose = TRUE, method = "cmeans")
+
+# Print the centroids
+cat("\nCluster Centroids:\n")
+print(result2$centers)
+
+# Create a contingency table between Outcome labels and cluster assignments
+cat("\nContingency Table between Outcome Labels and Clusters:\n")
+table(outcome_labels, result2$cluster)
+
+# Calculate Euclidean distances between all pairs of centroids
+cat("\nEuclidean Distances between Centroids:\n")
+centroids2 <- result2$centers
+
+# Calculate and print the distances
+for (i in 1:(nrow(centroids2) - 1)) {
+  for (j in (i + 1):nrow(centroids2)) {
+    cat(sprintf("Distance between centroid %d and %d: %.4f\n", i, j,
+                euclidean_distance(centroids2[i, ], centroids2[j, ])))
+  }
+}
+
+
+##### Question 5 ----
+#install.packages("mclust")
+library(mclust) #BIC: Bayesian information criteria
+
+data <- read.csv("Pima.csv")
+
+# clean the data
+data$Glucose[data$Glucose == 0] <- NA
+data$BloodPressure[data$BloodPressure == 0] <- NA
+data$SkinThickness[data$SkinThickness == 0] <- NA
+data$Insulin[data$Insulin == 0] <- NA
+data$BMI[data$BMI == 0] <- NA
+# remove rows with NA
+data <- na.omit(data)
+
+outcome_labels <- ifelse(data$Outcome == 1, "Yes", "No")
+#exclude outcome column
+data <- data[, -ncol(data)]
+
+### Perform Gaussian Mixture Clustering (GMC)
+fitEM <- Mclust(data)  # Fit GMM model to the dataset
+# 1. Show the best-fitted number of clusters
+cat("Best number of clusters (based on BIC):", fitEM$G, "\n")
+
+# 2. Associated centroids (means) and covariances
+cat("\nCluster Centroids (Means):\n")
+print(fitEM$parameters$mean)
+
+cat("\nCovariance Matrices for Each Cluster:\n")
+print(fitEM$parameters$variance$sigma)
+
+# 3. Create a table between Outcome labels and cluster assignments
+cat("\nContingency Table between Outcome Labels and Cluster Assignments:\n")
+print(table(outcome_labels, fitEM$classification))
+
+# 4. Calculate Mahalanobis distances between pairs of centroids
+cat("\nMahalanobis Distances between Centroids:\n")
+
+# Function to compute Mahalanobis distance between two centroids
+mahalanobis_distance <- function(mean1, mean2, cov_matrix) {
+  diff <- mean1 - mean2
+  sqrt(t(diff) %*% solve(cov_matrix) %*% diff)
+}
+
+# Calculate and print Mahalanobis distances for all pairs of centroids
+centroids <- fitEM$parameters$mean
+for (i in 1:(ncol(centroids) - 1)) {
+  for (j in (i + 1):ncol(centroids)) {
+    dist <- mahalanobis_distance(
+      centroids[, i], centroids[, j], 
+      fitEM$parameters$variance$sigma[, , i]
+    )
+    cat(sprintf("Mahalanobis distance between centroid %d and %d: %.4f\n", i, j, dist))
+  }
+}
+
+
+##### Question 6----
+# Install and load clusterSim if needed
+# install.packages("clusterSim")
+#install.packages("R2HTML")
+library(clusterSim)
+
+# Load the gender_outlier dataset
+data <- read.csv("gender_outlier.csv")
+
+# Separate features and labels
+data_features <- data[, -ncol(data)]  # Features
+gender_labels <- data[, ncol(data)]   # Gender (Male/Female)
+
+# Define the range of clusters (2 to 9)
+min.nc <- 2
+max.nc <- 9
+
+# Initialize an array to store DB index values for different linkage methods
+HC <- array(0, c(max.nc - min.nc + 1, 4))  # 4 methods: single, complete, average, ward
+
+# Perform hierarchical clustering using different linkage methods
+for (nc in min.nc:max.nc) {
+  
+  # 1. Single Linkage Method
+  fithc_single <- hclust(dist(data_features), method = "single")
+  ct_single <- cutree(fithc_single, k = nc)
+  HC[nc - min.nc + 1, 1] <- index.DB(data_features, ct_single, centrotypes = "centroids")$DB
+  
+  # 2. Complete Linkage Method
+  fithc_complete <- hclust(dist(data_features), method = "complete")
+  ct_complete <- cutree(fithc_complete, k = nc)
+  HC[nc - min.nc + 1, 2] <- index.DB(data_features, ct_complete, centrotypes = "centroids")$DB
+  
+  # 3. Group Average Linkage Method
+  fithc_average <- hclust(dist(data_features), method = "average")
+  ct_average <- cutree(fithc_average, k = nc)
+  HC[nc - min.nc + 1, 3] <- index.DB(data_features, ct_average, centrotypes = "centroids")$DB
+  
+  # 4. Ward's Method
+  fithc_ward <- hclust(dist(data_features), method = "ward.D")
+  ct_ward <- cutree(fithc_ward, k = nc)
+  HC[nc - min.nc + 1, 4] <- index.DB(data_features, ct_ward, centrotypes = "centroids")$DB
+}
+
+# Find the best number of clusters based on the minimum DB index for each method
+best_single <- which.min(HC[, 1]) + min.nc - 1
+best_complete <- which.min(HC[, 2]) + min.nc - 1
+best_average <- which.min(HC[, 3]) + min.nc - 1
+best_ward <- which.min(HC[, 4]) + min.nc - 1
+
+# Print the best number of clusters for each method
+cat("Best number of clusters (Single Link):", best_single, "\n")
+cat("Best number of clusters (Complete Link):", best_complete, "\n")
+cat("Best number of clusters (Group Average):", best_average, "\n")
+cat("Best number of clusters (Ward's Method):", best_ward, "\n")
+
+# Example: Use Ward's method with the best number of clusters
+best_clusters <- cutree(fithc_ward, k = best_ward)
+
+# Create a contingency table to show gender distribution in each cluster
+cat("\nContingency Table (Ward's Method):\n")
+gender_cluster_table <- table(gender_labels, best_clusters)
+print(gender_cluster_table)
+
+# Determine the majority class (Male or Female) in each cluster
+majority_class <- apply(gender_cluster_table, 2, function(col) {
+  if (col["female"] > col["male"]) {
+    return("Female")
+  } else {
+    return("Male")
+  }
+})
+
+cat("\nMajority class in each cluster (Ward's Method):\n")
+print(majority_class)

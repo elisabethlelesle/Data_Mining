@@ -235,10 +235,13 @@ train_data_normalized$quality <- train_data$quality
 test_data_normalized <- as.data.frame(scale(test_data[, -which(names(test_data) == "quality")]))
 test_data_normalized$quality <- test_data$quality
 
-k_values <- 1:20
+k_values <- seq(1, 11, by = 2)
 accuracy_values <- numeric(length(k_values))
 
-for (k in k_values) {
+# Iterate over the odd k-values and compute accuracy
+for (i in seq_along(k_values)) {
+  k <- k_values[i]
+  
   # Make predictions using KNN
   knn_predictions <- knn(train = train_data_normalized[, -which(names(train_data_normalized) == "quality")],
                          test = test_data_normalized[, -which(names(test_data_normalized) == "quality")],
@@ -246,7 +249,7 @@ for (k in k_values) {
                          k = k)
   
   # Calculate overall accuracy
-  accuracy_values[k] <- mean(knn_predictions == test_data_normalized$quality)
+  accuracy_values[i] <- mean(knn_predictions == test_data_normalized$quality)
 }
 
 # Plot accuracy for different k values

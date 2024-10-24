@@ -421,25 +421,36 @@ print(fitEM$parameters$variance$sigma)
 cat("\nContingency Table between Outcome Labels and Cluster Assignments:\n")
 print(table(outcome_labels, fitEM$classification))
 
-# 4. Calculate Mahalanobis distances between pairs of centroids
-cat("\nMahalanobis Distances between Centroids:\n")
+# 4. Calculate Mahalanobis distances between each point and its assigned cluster centroid
+cat("\nAverage Mahalanobis Distances within Each Group:\n")
 
-# Function to compute Mahalanobis distance between two centroids
-mahalanobis_distance <- function(mean1, mean2, cov_matrix) {
-  diff <- mean1 - mean2
+# Function to compute Mahalanobis distance between a data point and a centroid
+mahalanobis_distance_point <- function(point, mean, cov_matrix) {
+  diff <- point - mean
   sqrt(t(diff) %*% solve(cov_matrix) %*% diff)
 }
 
-# Calculate and print Mahalanobis distances for all pairs of centroids
+# Calculate average Mahalanobis distance for each group (cluster)
 centroids <- fitEM$parameters$mean
-for (i in 1:(ncol(centroids) - 1)) {
-  for (j in (i + 1):ncol(centroids)) {
-    dist <- mahalanobis_distance(
-      centroids[, i], centroids[, j], 
-      fitEM$parameters$variance$sigma[, , i]
-    )
-    cat(sprintf("Mahalanobis distance between centroid %d and %d: %.4f\n", i, j, dist))
-  }
+covariances <- fitEM$parameters$variance$sigma
+cluster_assignments <- fitEM$classification
+num_clusters <- fitEM$G
+
+# Loop through each cluster and compute average Mahalanobis distance
+for (cluster in 1:num_clusters) {
+  # Get points assigned to this cluster
+  points_in_cluster <- data[cluster_assignments == cluster, ]
+  
+  # Get the corresponding centroid and covariance matrix for this cluster
+  centroid <- centroids[, cluster]
+  covariance <- covariances[, , cluster]
+  
+  # Compute Mahalanobis distance for each point in the cluster
+  distances <- apply(points_in_cluster, 1, mahalanobis_distance_point, mean = centroid, cov_matrix = covariance)
+  
+  # Calculate the average Mahalanobis distance for this cluster
+  avg_distance <- mean(distances)
+  cat(sprintf("Average Mahalanobis distance for cluster %d: %.4f\n", cluster, avg_distance))
 }
 
 

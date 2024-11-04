@@ -17,10 +17,12 @@ date <- as.Date(date, format="%Y/%m/%d")  # Example format
 y <- handysize$Handysize
 
 # Exclude 'Handysize' and 'Date' from predictors
-X <- data.matrix(handysize[ , !(names(handysize) %in% c("Handysize", "Date"))])
+predictor_names <- names(handysize)[!(names(handysize) %in% c("Handysize"))]
+x <- data.matrix(handysize[ , predictor_names])
+
 
 # Set seed for reproducibility
-set.seed(123)
+set.seed(11355)
 
 # Initialize a table to store performance metrics
 performance_table <- matrix(NA, nrow=3, ncol=3)
@@ -28,49 +30,40 @@ rownames(performance_table) <- c("RMSE", "MAE", "MAPE")
 colnames(performance_table) <- c("Ridge", "Lasso", "ElasticNet")
 
 ############# Ridge Regression
-# Use cross-validation to find the best lambda
-ridge_cv <- cv.glmnet(X, y, alpha=0, nfolds=10)
-best_lambda_ridge <- ridge_cv$lambda.min
 
-# Fit the final Ridge model with the best lambda
-ridge_model <- glmnet(X, y, alpha=0, lambda=best_lambda_ridge)
+# Fit the final Ridge model
+ridge_model <- glmnet(x, y,family= "gaussian", alpha=0, lambda=1)
 ridge_beta <- as.vector(ridge_model$beta)
-names(ridge_beta) <- colnames(X)
+names(ridge_beta) <- predictor_names
 
 # Prediction and performance metrics
-pred_ridge <- predict(ridge_model, X)
+pred_ridge <- predict(ridge_model, x)
 performance_table[1,1] <- sqrt(mean((y - pred_ridge)^2))  # RMSE
 performance_table[2,1] <- mean(abs(y - pred_ridge))       # MAE
 performance_table[3,1] <- mean(abs((y - pred_ridge) / y)) * 100  # MAPE in percentage
 
 ############# Lasso Regression
-# Use cross-validation to find the best lambda
-lasso_cv <- cv.glmnet(X, y, alpha=1, nfolds=10)
-best_lambda_lasso <- lasso_cv$lambda.min
 
 # Fit the final Lasso model with the best lambda
-lasso_model <- glmnet(X, y, alpha=1, lambda=best_lambda_lasso)
+lasso_model <- glmnet(x, y,family="gaussian", alpha=1, lambda=1)
 lasso_beta <- as.vector(lasso_model$beta)
-names(lasso_beta) <- colnames(X)
+names(lasso_beta) <- colnames(x)
 
 # Prediction and performance metrics
-pred_lasso <- predict(lasso_model, X)
+pred_lasso <- predict(lasso_model, x)
 performance_table[1,2] <- sqrt(mean((y - pred_lasso)^2))  # RMSE
 performance_table[2,2] <- mean(abs(y - pred_lasso))       # MAE
 performance_table[3,2] <- mean(abs((y - pred_lasso) / y)) * 100  # MAPE in percentage
 
 ############# ElasticNet Regression
-# Use cross-validation to find the best lambda
-elastic_cv <- cv.glmnet(X, y, alpha=0.5, nfolds=10)
-best_lambda_elastic <- elastic_cv$lambda.min
 
 # Fit the final Elastic Net model with the best lambda
-elastic_model <- glmnet(X, y, alpha=0.5, lambda=best_lambda_elastic)
+elastic_model <- glmnet(x, y,family="gaussian", alpha=0.5, lambda=1)
 elastic_beta <- as.vector(elastic_model$beta)
-names(elastic_beta) <- colnames(X)
+names(elastic_beta) <- colnames(x)
 
 # Prediction and performance metrics
-pred_elastic <- predict(elastic_model, X)
+pred_elastic <- predict(elastic_model, x)
 performance_table[1,3] <- sqrt(mean((y - pred_elastic)^2))  # RMSE
 performance_table[2,3] <- mean(abs(y - pred_elastic))       # MAE
 performance_table[3,3] <- mean(abs((y - pred_elastic) / y)) * 100  # MAPE in percentage
@@ -79,8 +72,44 @@ performance_table[3,3] <- mean(abs((y - pred_elastic) / y)) * 100  # MAPE in per
 print(performance_table)
 
 # Identify significant predictors
-significant_predictors_lasso <- names(lasso_beta)[lasso_beta != 0]
-significant_predictors_elastic <- names(elastic_beta)[elastic_beta != 0]
+# For Ridge Regression, rank predictors based on absolute coefficient values
+ridge_coefficients <- data.frame(
+  Predictor = predictor_names,
+  Coefficient = ridge_beta,
+  AbsCoefficient = abs(ridge_beta)
+)
+
+# Sort predictors by absolute coefficient values in decreasing order
+ridge_coefficients <- ridge_coefficients[order(-ridge_coefficients$AbsCoefficient), ]
+
+# We select predictors with absolute coefficients above x percent
+threshold <- quantile(ridge_coefficients$AbsCoefficient, 0.75)  # Top 25%
+significant_predictors_ridge <- ridge_coefficients$Predictor[ridge_coefficients$AbsCoefficient >= threshold]
+
+# Print significant predictors
+print("Significant predictors in Ridge Regression (Top 25% by absolute coefficient):")
+print(significant_predictors_ridge)
+
+# Identify significant predictors
+lasso_coefficients <- data.frame(
+  Predictor = predictor_names,
+  Coefficient = ridge_beta,
+  AbsCoefficient = abs(ridge_beta)
+)
+lasso_coefficients <- lasso_coefficients[order(-lasso_coefficients$AbsCoefficient), ]
+threshold_lasso <- quantile(lasso_coefficients$AbsCoefficient, 0.75)  # Top 25%
+significant_predictors_lasso <- lasso_coefficients$Predictor[lasso_coefficients$AbsCoefficient >= threshold_lasso]
+
+
+
+elastic_coefficients <- data.frame(
+  Predictor = predictor_names,
+  Coefficient = elastic_beta,
+  AbsCoefficient = abs(elastic_beta)
+)
+elastic_coefficients <- elastic_coefficients[order(-elastic_coefficients$AbsCoefficient), ]
+threshold_elastic <- quantile(elastic_coefficients$AbsCoefficient, 0.75)  # Top 25%
+significant_predictors_elastic <- elastic_coefficients$Predictor[elastic_coefficients$AbsCoefficient >= threshold_elastic]
 
 # Print significant predictors
 print("Significant predictors in Lasso Regression:")

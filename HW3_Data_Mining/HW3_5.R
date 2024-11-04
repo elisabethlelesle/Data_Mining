@@ -2,6 +2,8 @@
 library(dplyr)
 library(e1071)  # For Naive Bayes
 library(pROC)   # For AUC calculation
+#install.packages("klaR")
+library(klaR)
 
 # Load Titanic dataset
 titanic <- read.csv("titanic.csv")
@@ -9,30 +11,23 @@ titanic <- read.csv("titanic.csv")
 # Handle missing values if necessary
 titanic <- na.omit(titanic)
 
-# Recode gender variable to "male" and "female" if necessary
-# Check unique values in gender
-unique_genders <- unique(titanic$gender)
-if (all(unique_genders %in% c(0, 1))) {
-  titanic$gender <- ifelse(titanic$gender == 0, "male", "female")
-}
+titanic$gender <- ifelse(titanic$gender == 0, "male", "female")
 
 # Convert gender to factor
 titanic$gender <- as.factor(titanic$gender)
 
-# Recode survival variable to "died" and "survived" if necessary
-unique_survival <- unique(titanic$survival)
-if (all(unique_survival %in% c(0, 1))) {
-  titanic$survival <- ifelse(titanic$survival == 0, "died", "survived")
-}
+# Recode survival variable to "died" and "survived"
+titanic$survival <- ifelse(titanic$survival == 0, "died", "survived")
+
 
 # Convert survival to factor
 titanic$survival <- as.factor(titanic$survival)
 
-# Convert 'class' to factor if not already
+# Convert 'class' to factor 
 titanic$class <- as.factor(titanic$class)
 
 # Set seed for reproducibility
-set.seed(42)
+set.seed(11355)
 
 # Split the data into training and testing sets (70% training, 30% testing)
 train_size <- floor(0.7 * nrow(titanic))
@@ -41,10 +36,10 @@ train_data <- titanic[train_indices, ]
 test_data <- titanic[-train_indices, ]
 
 # Build Naïve Bayes model
-nb_model <- naiveBayes(survival ~ class + gender + age + fare, data = train_data)
+nb_model <- NaiveBayes(survival ~ class + gender + age + fare, data = train_data)
 
 # Build Logistic Regression model
-logit_model <- glm(survival ~ class + gender + age + fare, data = train_data, family = "binomial")
+logit_model <- glm(survival ~ class + gender + age + fare, data = train_data, family=binomial(link="logit"))
 
 # Scenario 1: Impact of Gender (Male vs Female), given Age = 30, Class = 2, Fare = 20
 scenario1 <- data.frame(
@@ -55,7 +50,7 @@ scenario1 <- data.frame(
 )
 
 # Naïve Bayes predictions for Scenario 1
-nb_pred1 <- predict(nb_model, scenario1, type = "raw")[, "survived"]
+nb_pred1 <- predict(nb_model, scenario1, type = "raw")$posterior[, "survived"]
 
 # Logistic Regression predictions for Scenario 1
 logit_pred1 <- predict(logit_model, scenario1, type = "response")
@@ -78,7 +73,7 @@ scenario2 <- data.frame(
 )
 
 # Naïve Bayes predictions for Scenario 2
-nb_pred2 <- predict(nb_model, scenario2, type = "raw")[, "survived"]
+nb_pred2 <- predict(nb_model, scenario2, type = "raw")$posterior[, "survived"]
 
 # Logistic Regression predictions for Scenario 2
 logit_pred2 <- predict(logit_model, scenario2, type = "response")
@@ -101,7 +96,7 @@ scenario3 <- data.frame(
 )
 
 # Naïve Bayes predictions for Scenario 3
-nb_pred3 <- predict(nb_model, scenario3, type = "raw")[, "survived"]
+nb_pred3 <- predict(nb_model, scenario3, type = "raw")$posterior[, "survived"]
 
 # Logistic Regression predictions for Scenario 3
 logit_pred3 <- predict(logit_model, scenario3, type = "response")

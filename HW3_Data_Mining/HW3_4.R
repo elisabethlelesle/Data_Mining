@@ -111,22 +111,29 @@ print(performance_table)
 # Plotting
 #-------------------------------
 # Combine actual and predicted values into one dataframe
+# Combine actual and predicted values into one dataframe
 plot_data <- data.frame(
-  Year = test_data$Year,
+  Date = test_data$Date,
   Actual = test_data$Container,
   MLR_Predicted = mlr_test_preds,
   MARS_Predicted = mars_test_preds
 )
 
 # Melt the data for plotting
-library(reshape2)
-plot_data_melted <- melt(plot_data, id.vars = "Year")
+plot_data_melted <- melt(plot_data, id.vars = "Date")
 
-# Plot
-ggplot(plot_data_melted, aes(x = Year, y = value, color = variable, linetype = variable)) +
+# Plot with legend adjustments
+ggplot(plot_data_melted, aes(x = Date, y = value, color = variable, linetype = variable)) +
   geom_line(size = 1) +
   labs(title = "Actual vs Predicted Container Values",
-       x = "Year", y = "Container") +
-  scale_color_manual(values = c("blue", "red", "green")) +
+       x = "Date", y = "Container") +
+  scale_color_manual(
+    values = c("blue", "red", "green"),
+    labels = c("Actual", "MLR Predicted", "MARS Predicted")
+  ) +
+  scale_linetype_manual(
+    values = c("solid", "dashed", "dotted"),
+    labels = c("Actual", "MLR Predicted", "MARS Predicted")
+  ) +
   theme_minimal() +
   theme(legend.title = element_blank())

@@ -34,6 +34,7 @@ train_data <- pima_significant[index, ]
 test_data <- pima_significant[-index, ]
 
 train_data$Outcome <- factor(train_data$Outcome, levels = c(0, 1))
+test_data$Outcome <- factor(test_data$Outcome, levels = c(0, 1))
 
 # Train and tune KNN model with cross-validation
 train_control <- trainControl(method = "cv", number = 10)
@@ -57,7 +58,7 @@ ggplot(knn_model$results, aes(x = k, y = Accuracy)) +
        x = "Number of Neighbors (K)",
        y = "Accuracy") +
   theme_minimal()
-#best k = 7
+#best k = 15
 
 ##Naive Bayes
 # Train Naive Bayes model
@@ -283,3 +284,385 @@ cat("Naïve Bayes with Partial Predictors:\n",
     "Overall Accuracy:", overall_accuracy_partial, "\n",
     "Accuracy for y-yes:", accuracy_yes_partial, "\n",
     "Accuracy for y-no:", accuracy_no_partial, "\n")
+
+
+################### Question 4
+library(earth)
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+
+# Read the data
+data <- read.csv("container.csv")
+data <- na.omit(data)
+
+# Convert Date to Date format and extract Year
+data$Date <- as.Date(data$Date, format = "%Y/%m/%d")
+data$Year <- year(data$Date)
+
+# Split data into training and testing sets
+train_data <- subset(data, Year >= 2011 & Year <= 2020)
+test_data <- subset(data, Year >= 2021 & Year <= 2023)
+
+#---------------------------
+# Identify KPIs using MLR
+#---------------------------
+# Fit MLR model
+mlr_model <- lm(Container ~ ., data = train_data)
+mlr_summary <- summary(mlr_model)
+
+# Extract significant variables (p-value < 0.05)
+names(coef(mlr_model))[which(mlr_summary$coefficients[, "Pr(>|t|)"] < 0.05)]
+significant_vars_mlr <- names(coef(mlr_model))[which(mlr_summary$coefficients[, "Pr(>|t|)"] < 0.05)]
+significant_vars_mlr <- significant_vars_mlr[significant_vars_mlr != "(Intercept)"]
+
+#----------------------------
+# Identify KPIs using MARS
+#----------------------------
+# Fit MARS model with default parameters
+mars_model <- earth(Container ~ ., data = train_data)
+mars_evimp <- evimp(mars_model)
+
+# Extract variables used in MARS model
+rownames(mars_evimp)
+significant_vars_mars <- rownames(mars_evimp)
+
+#-------------------------------
+# Union of significant variables
+#-------------------------------
+key_vars <- union(significant_vars_mlr, significant_vars_mars)
+
+#--------------------------------
+# Refit models using key_vars
+#--------------------------------
+# Update formulas
+formula <- as.formula(paste("Container ~", paste(key_vars, collapse = " + ")))
+
+# Refit MLR model
+mlr_container <- lm(formula, data = train_data)
+summary(mlr_container)
+
+# Refit MARS model
+# Tuning the degree for optimal MARS model
+min_mape <- Inf
+best_degree <- 1
+
+for(i in 1:4) {
+  mars_model <- earth(formula, degree = i, data = train_data)
+  mars_test_preds <- predict(mars_model, newdata = test_data)
+  mape <- mean(abs((test_data$Container - mars_test_preds) / test_data$Container))
+  
+  if (mape < min_mape) {
+    min_mape <- mape
+    best_degree <- i
+  }
+}
+print(paste("Best degree for MARS:", best_degree))
+
+# Final MARS model with optimal degree
+mars_container <- earth(formula, degree = best_degree, data = train_data)
+summary(mars_container)
+
+#-------------------------------
+# Predictions and Performance
+#-------------------------------
+# Predictions on testing data
+mlr_test_preds <- predict(mlr_container, newdata = test_data)
+mars_test_preds <- predict(mars_container, newdata = test_data)
+
+# Calculate performance metrics for MLR
+mlr_rmse <- sqrt(mean((test_data$Container - mlr_test_preds)^2))
+mlr_mae <- mean(abs(test_data$Container - mlr_test_preds))
+mlr_mape <- mean(abs((test_data$Container - mlr_test_preds) / test_data$Container))
+
+# Calculate performance metrics for MARS
+mars_rmse <- sqrt(mean((test_data$Container - mars_test_preds)^2))
+mars_mae <- mean(abs(test_data$Container - mars_test_preds))
+mars_mape <- mean(abs((test_data$Container - mars_test_preds) / test_data$Container))
+
+# Display metrics
+performance_table <- data.frame(
+  Method = c("MLR", "MARS"),
+  RMSE = c(mlr_rmse, mars_rmse),
+  MAE = c(mlr_mae, mars_mae),
+  MAPE = c(mlr_mape, mars_mape)
+)
+print(performance_table)
+
+#-------------------------------
+# Managerial Insights
+#-------------------------------
+# Interpret the significant variables and discuss their impact on Container
+# (This section would be written in your report or presentation)
+
+#-------------------------------
+# Plotting
+#-------------------------------
+# Combine actual and predicted values into one dataframe
+# Combine actual and predicted values into one dataframe
+plot_data <- data.frame(
+  Date = test_data$Date,
+  Actual = test_data$Container,
+  MLR_Predicted = mlr_test_preds,
+  MARS_Predicted = mars_test_preds
+)
+
+# Melt the data for plotting
+plot_data_melted <- melt(plot_data, id.vars = "Date")
+
+# Plot with legend adjustments
+ggplot(plot_data_melted, aes(x = Date, y = value, color = variable, linetype = variable)) +
+  geom_line(size = 1) +
+  labs(title = "Actual vs Predicted Container Values",
+       x = "Date", y = "Container") +
+  scale_color_manual(
+    values = c("blue", "red", "green"),
+    labels = c("Actual", "MLR Predicted", "MARS Predicted")
+  ) +
+  scale_linetype_manual(
+    values = c("solid", "dashed", "dotted"),
+    labels = c("Actual", "MLR Predicted", "MARS Predicted")
+  ) +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+
+
+################### Question 5
+library(dplyr)
+library(e1071)  # For Naive Bayes
+library(pROC)   # For AUC calculation
+#install.packages("klaR")
+library(klaR)
+
+# Load Titanic dataset
+titanic <- read.csv("titanic.csv")
+
+# Handle missing values if necessary
+titanic <- na.omit(titanic)
+
+titanic$gender <- ifelse(titanic$gender == 0, "male", "female")
+
+# Convert gender to factor
+titanic$gender <- as.factor(titanic$gender)
+
+# Recode survival variable to "died" and "survived"
+titanic$survival <- ifelse(titanic$survival == 0, "died", "survived")
+
+
+# Convert survival to factor
+titanic$survival <- as.factor(titanic$survival)
+
+# Convert 'class' to factor 
+titanic$class <- as.factor(titanic$class)
+
+# Set seed for reproducibility
+set.seed(11355)
+
+# Split the data into training and testing sets (70% training, 30% testing)
+train_size <- floor(0.7 * nrow(titanic))
+train_indices <- sample(seq_len(nrow(titanic)), size = train_size)
+train_data <- titanic[train_indices, ]
+test_data <- titanic[-train_indices, ]
+
+# Build Na�ve Bayes model
+nb_model <- NaiveBayes(survival ~ class + gender + age + fare, data = train_data)
+
+# Build Logistic Regression model
+logit_model <- glm(survival ~ class + gender + age + fare, data = train_data, family=binomial(link="logit"))
+
+# Scenario 1: Impact of Gender (Male vs Female), given Age = 30, Class = 2, Fare = 20
+scenario1 <- data.frame(
+  class = factor(2, levels = levels(train_data$class)),
+  age = 30,
+  fare = 20,
+  gender = factor(c("male", "female"), levels = levels(train_data$gender))
+)
+
+# Na�ve Bayes predictions for Scenario 1
+nb_pred1 <- predict(nb_model, scenario1, type = "raw")$posterior[, "survived"]
+
+# Logistic Regression predictions for Scenario 1
+logit_pred1 <- predict(logit_model, scenario1, type = "response")
+
+# Display predictions for Scenario 1
+scenario1_results <- data.frame(
+  Gender = scenario1$gender,
+  Naive_Bayes = nb_pred1,
+  Logistic_Regression = logit_pred1
+)
+print("Scenario 1: Impact of Gender (Male vs Female), given Age = 30, Class = 2, Fare = 20")
+print(scenario1_results)
+
+# Scenario 2: Impact of Age (1 vs 25), given Gender = Male, Class = 1, Fare = 40
+scenario2 <- data.frame(
+  class = factor(1, levels = levels(train_data$class)),
+  age = c(1, 25),
+  fare = 40,
+  gender = factor("male", levels = levels(train_data$gender))
+)
+
+# Na�ve Bayes predictions for Scenario 2
+nb_pred2 <- predict(nb_model, scenario2, type = "raw")$posterior[, "survived"]
+
+# Logistic Regression predictions for Scenario 2
+logit_pred2 <- predict(logit_model, scenario2, type = "response")
+
+# Display predictions for Scenario 2
+scenario2_results <- data.frame(
+  Age = scenario2$age,
+  Naive_Bayes = nb_pred2,
+  Logistic_Regression = logit_pred2
+)
+print("Scenario 2: Impact of Age (1 vs 25), given Gender = Male, Class = 1, Fare = 40")
+print(scenario2_results)
+
+# Scenario 3: Impact of Class (1, 2, 3), given Gender = Female, Age = 25, Fare = 40
+scenario3 <- data.frame(
+  class = factor(c(1, 2, 3), levels = levels(train_data$class)),
+  age = 25,
+  fare = 40,
+  gender = factor("female", levels = levels(train_data$gender))
+)
+
+# Na�ve Bayes predictions for Scenario 3
+nb_pred3 <- predict(nb_model, scenario3, type = "raw")$posterior[, "survived"]
+
+# Logistic Regression predictions for Scenario 3
+logit_pred3 <- predict(logit_model, scenario3, type = "response")
+
+# Display predictions for Scenario 3
+scenario3_results <- data.frame(
+  Class = scenario3$class,
+  Naive_Bayes = nb_pred3,
+  Logistic_Regression = logit_pred3
+)
+print("Scenario 3: Impact of Class (1, 2, 3), given Gender = Female, Age = 25, Fare = 40")
+print(scenario3_results)
+
+
+################### Question 6
+library(glmnet)
+
+# Remove samples with missing values
+handysize <- read.csv("handysize.csv")
+handysize <- na.omit(handysize)
+
+# Extract the date variable
+# Assume the date column is named 'Date' in your dataset
+date <- handysize$Date
+
+# Convert the date variable to Date format if it's not already
+# Adjust the format string according to your date format
+date <- as.Date(date, format="%Y/%m/%d")  # Example format
+
+# Prepare the response and predictor matrix
+y <- handysize$Handysize
+
+# Exclude 'Handysize' and 'Date' from predictors
+predictor_names <- names(handysize)[!(names(handysize) %in% c("Handysize"))]
+x <- data.matrix(handysize[ , predictor_names])
+
+
+# Set seed for reproducibility
+set.seed(11355)
+
+# Initialize a table to store performance metrics
+performance_table <- matrix(NA, nrow=3, ncol=3)
+rownames(performance_table) <- c("RMSE", "MAE", "MAPE")
+colnames(performance_table) <- c("Ridge", "Lasso", "ElasticNet")
+
+############# Ridge Regression
+
+# Fit the final Ridge model
+ridge_model <- glmnet(x, y,family= "gaussian", alpha=0, lambda=1)
+ridge_beta <- as.vector(ridge_model$beta)
+names(ridge_beta) <- predictor_names
+
+# Prediction and performance metrics
+pred_ridge <- predict(ridge_model, x)
+performance_table[1,1] <- sqrt(mean((y - pred_ridge)^2))  # RMSE
+performance_table[2,1] <- mean(abs(y - pred_ridge))       # MAE
+performance_table[3,1] <- mean(abs((y - pred_ridge) / y)) * 100  # MAPE in percentage
+
+############# Lasso Regression
+
+# Fit the final Lasso model with the best lambda
+lasso_model <- glmnet(x, y,family="gaussian", alpha=1, lambda=1)
+lasso_beta <- as.vector(lasso_model$beta)
+names(lasso_beta) <- colnames(x)
+
+# Prediction and performance metrics
+pred_lasso <- predict(lasso_model, x)
+performance_table[1,2] <- sqrt(mean((y - pred_lasso)^2))  # RMSE
+performance_table[2,2] <- mean(abs(y - pred_lasso))       # MAE
+performance_table[3,2] <- mean(abs((y - pred_lasso) / y)) * 100  # MAPE in percentage
+
+############# ElasticNet Regression
+
+# Fit the final Elastic Net model with the best lambda
+elastic_model <- glmnet(x, y,family="gaussian", alpha=0.5, lambda=1)
+elastic_beta <- as.vector(elastic_model$beta)
+names(elastic_beta) <- colnames(x)
+
+# Prediction and performance metrics
+pred_elastic <- predict(elastic_model, x)
+performance_table[1,3] <- sqrt(mean((y - pred_elastic)^2))  # RMSE
+performance_table[2,3] <- mean(abs(y - pred_elastic))       # MAE
+performance_table[3,3] <- mean(abs((y - pred_elastic) / y)) * 100  # MAPE in percentage
+
+# Display the performance table
+print(performance_table)
+
+# Identify significant predictors
+# For Ridge Regression, rank predictors based on absolute coefficient values
+ridge_coefficients <- data.frame(
+  Predictor = predictor_names,
+  Coefficient = ridge_beta,
+  AbsCoefficient = abs(ridge_beta)
+)
+
+# Sort predictors by absolute coefficient values in decreasing order
+ridge_coefficients <- ridge_coefficients[order(-ridge_coefficients$AbsCoefficient), ]
+
+# We select predictors with absolute coefficients above x percent
+threshold <- quantile(ridge_coefficients$AbsCoefficient, 0.75)  # Top 25%
+significant_predictors_ridge <- ridge_coefficients$Predictor[ridge_coefficients$AbsCoefficient >= threshold]
+
+# Print significant predictors
+print("Significant predictors in Ridge Regression (Top 25% by absolute coefficient):")
+print(significant_predictors_ridge)
+
+# Identify significant predictors
+lasso_coefficients <- data.frame(
+  Predictor = predictor_names,
+  Coefficient = ridge_beta,
+  AbsCoefficient = abs(ridge_beta)
+)
+lasso_coefficients <- lasso_coefficients[order(-lasso_coefficients$AbsCoefficient), ]
+threshold_lasso <- quantile(lasso_coefficients$AbsCoefficient, 0.75)  # Top 25%
+significant_predictors_lasso <- lasso_coefficients$Predictor[lasso_coefficients$AbsCoefficient >= threshold_lasso]
+
+
+
+elastic_coefficients <- data.frame(
+  Predictor = predictor_names,
+  Coefficient = elastic_beta,
+  AbsCoefficient = abs(elastic_beta)
+)
+elastic_coefficients <- elastic_coefficients[order(-elastic_coefficients$AbsCoefficient), ]
+threshold_elastic <- quantile(elastic_coefficients$AbsCoefficient, 0.75)  # Top 25%
+significant_predictors_elastic <- elastic_coefficients$Predictor[elastic_coefficients$AbsCoefficient >= threshold_elastic]
+
+# Print significant predictors
+print("Significant predictors in Lasso Regression:")
+print(significant_predictors_lasso)
+
+print("Significant predictors in Elastic Net Regression:")
+print(significant_predictors_elastic)
+
+# Plotting actual vs predicted values over time (Date)
+plot(date, y, type='l', col='black', lwd=2, ylab='Value', xlab='Date', main='Actual vs Predicted Values')
+lines(date, pred_ridge, col='blue', lwd=2)
+lines(date, pred_lasso, col='red', lwd=2)
+lines(date, pred_elastic, col='green', lwd=2)
+legend("topright", legend=c("Actual", "Ridge", "Lasso", "ElasticNet"), col=c("black", "blue", "red", "green"), lwd=2)

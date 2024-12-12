@@ -59,9 +59,9 @@ ggplot(party_year, aes(x=year, y=seats, color=top_party, group=top_party)) +
   labs(title="Number of Seats Won by Party Over Time", x="Year", y="Number of Seats")
 
 # Distribution of total votes over time
-ggplot(winners, aes(x=year, y=totalvotes)) +
-  geom_boxplot() + 
-  labs(title="Distribution of Total Votes Cast Over Years", x="Year", y="Total Votes")
+#ggplot(winners, aes(x=year, y=totalvotes)) +
+#  geom_boxplot() + 
+#  labs(title="Distribution of Total Votes Cast Over Years", x="Year", y="Total Votes")
 
 
 major_two <- winners %>%
@@ -71,6 +71,36 @@ ggplot(major_two, aes(x=year, fill=top_party)) +
   geom_bar(position="fill") +
   labs(title="Share of Districts Won by Democrats vs. Republicans", x="Year", y="Proportion")
 
+presidents_df <- data.frame(
+  Start_Year = c(1977, 1981, 1989, 1993, 2001, 2009, 2017, 2021),
+  End_Year   = c(1981, 1989, 1993, 2001, 2009, 2017, 2021, 2023),
+  president  = c("CARTER", "REAGAN", "H. W. BUSH", "CLINTON", "W. BUSH", "OBAMA", "TRUMP", "BIDEN"),
+  prez_party = c("Democrat","Republican","Republican","Democrat","Republican","Democrat","Republican","Democrat")
+)
+
+ggplot(major_two, aes(x=year, fill=top_party)) +
+  geom_bar(position="fill") +
+  labs(title="Share of Districts Won by Democrats vs. Republicans", x="Year", y="Proportion") +
+  # Add a segment above the bars to show presidential terms
+  geom_segment(data=presidents_df, 
+               aes(x=Start_Year, xend=End_Year, y=1.05, yend=1.05, color=prez_party), 
+               size=3, inherit.aes = FALSE, show.legend = FALSE) +
+  # Add text labels for presidents
+  geom_text(data=presidents_df, 
+            aes(x=(Start_Year + End_Year)/2, y=1.1, label=president, color=prez_party), 
+            size=3.5, fontface="bold", hjust=0.5, inherit.aes = FALSE, show.legend = FALSE) +
+  # Map party colors for presidents
+  scale_color_manual(values=c("Democrat"="#64B6EC", "Republican"="#FF8972")) +
+  # Expand limits so we have room above 1.0 for the segments and text
+  expand_limits(y=1.2) +
+  # Allow drawing outside plot area if needed
+  coord_cartesian(clip="off") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size=14, face="bold"),
+    axis.title = element_text(face="bold"),
+    plot.margin = unit(c(1, 4, 1, 1), "lines") # Add extra right margin if needed
+  )
 
 
 library(timeDate)
@@ -82,7 +112,7 @@ winners_numeric <- winners %>%
   mutate(runoff_num = as.numeric(runoff),
          special_num = as.numeric(special))
 
-cor(winners_numeric[, c("year","totalvotes", "runoff_num","special_num")], use="pairwise.complete.obs")
+#cor(winners_numeric[, c("year","totalvotes", "runoff_num","special_num")], use="pairwise.complete.obs")
 
 
 binary_data <- major_two %>%
@@ -101,13 +131,3 @@ accuracy <- sum(diag(conf_mat))/sum(conf_mat)
 accuracy
 
 
-state_pattern <- major_two %>%
-  group_by(state) %>%
-  summarise(dem_share = mean(dem_win))
-
-dist_mat <- dist(state_pattern$dem_share)
-hc <- hclust(dist_mat, method="complete")
-plot(hc, labels=state_pattern$state, main="Hierarchical Clustering of States by Democratic Share")
-
-
-vif(LR_model) # Check for multicollinearity
